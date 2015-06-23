@@ -2,6 +2,7 @@
 <html>
   <head>
     <title>Mixed-Content: XHR behavior</title>
+    <meta charset='utf-8'>
     <meta name="description" content="Web-Insects">
     <link rel="author" title="Kristijan Burnik" href="burnik@chromium.org">
     <link rel="help" href="http://www.w3.org/TR/mixed-content/">
@@ -11,21 +12,20 @@
   </head>
   <body>
     <h1>Mixed-Content: XHR events test</h1>
-    <div id="log"></div>
     <script>
 
-      function xhrRequest(url) {
+      function xhrPromise(url) {
         return new Promise(function(resolve, reject) {
           var xhr = new XMLHttpRequest();
 
           xhr.addEventListener("error", function() {
-            console.info("YAY! Error events are properly implemented!");
             reject(Error("Network Error"));
           });
 
           xhr.addEventListener("load", function() {
-            if (xhr.status != 200)
+            if (xhr.status != 200) {
               return reject(Error(xhr.statusText));
+            }
 
             resolve(xhr.response);
           });
@@ -41,6 +41,8 @@
         var expectedEventTriggered = false;
 
         function triggerEvent(event_type) {
+           console.log("Triggered event", event_type);
+
           expectedEventTriggered = true;
           xhr_test.step(function() {
             assert_equals(event_type, expectation,
@@ -50,10 +52,11 @@
         }
 
         // Trigger proper event.
-        var p = xhrRequest(url).then(function() {
+        xhrPromise(url).then(function() {
           triggerEvent("success");
         }, function(err) {
           triggerEvent("error");
+          console.log(err);
         });
 
         // Force the timeout since testharness seems broken in this regard.
@@ -78,9 +81,13 @@
       runTest(location.origin, "success",
               "Non mixed-content request");
 
+      runTest(location.origin + "/nonexistingfile.html", "error",
+              "Non mixed-content request with a 404 response");
+
       runTest("http://" + location.host, "error",
               "Mixed-content request");
 
     </script>
+    <div id="log"></div>
   </body>
 </html>
