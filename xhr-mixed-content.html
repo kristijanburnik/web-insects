@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Mixed-Content: XHR behavior</title>
+    <meta name="description" content="Web-Insects">
+    <link rel="author" title="Kristijan Burnik" href="burnik@chromium.org">
+    <link rel="help" href="http://www.w3.org/TR/mixed-content/">
+    <meta name="assert" content="Check if XHR is responding to mixed-content">
+  </head>
+  <body>
+    <script>
+
+      function xhrRequest(url, responseType) {
+        return new Promise(function(resolve, reject) {
+          var xhr = new XMLHttpRequest();
+          xhr.open('GET', url, true);
+          xhr.responseType = responseType || "json";
+
+          xhr.addEventListener("error", function() {
+            reject(Error("Network Error"));
+          });
+
+          xhr.addEventListener("load", function() {
+            if (xhr.status != 200)
+              return reject(Error(xhr.statusText));
+
+            resolve(xhr.response);
+          });
+
+          xhr.addEventListener("readystatechange", function(e) {
+            console.log("readystatechange", xhr.status, e);
+          });
+
+
+          xhr.send();
+        });
+      }
+
+      xhrRequest("http://bristijanburnik.github.io/");
+
+    </script>
+  </body>
+</html>
