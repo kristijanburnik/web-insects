@@ -6,17 +6,20 @@
     <link rel="author" title="Kristijan Burnik" href="burnik@chromium.org">
     <link rel="help" href="http://www.w3.org/TR/mixed-content/">
     <meta name="assert" content="Check if XHR is responding to mixed-content">
+    <script src="testharness/testharness.js"></script>
+    <script src="testharness/testharnessreport.js"></script>
   </head>
   <body>
+    <h1>Mixed-Content: XHR events test</h1>
+    <div id="log"></div>
     <script>
 
-      function xhrRequest(url, responseType) {
+      function xhrRequest(url) {
         return new Promise(function(resolve, reject) {
           var xhr = new XMLHttpRequest();
-          xhr.open('GET', url, true);
-          xhr.responseType = responseType || "json";
 
           xhr.addEventListener("error", function() {
+            console.info("YAY! Error events are properly implemented!");
             reject(Error("Network Error"));
           });
 
@@ -27,16 +30,56 @@
             resolve(xhr.response);
           });
 
-          xhr.addEventListener("readystatechange", function(e) {
-            console.log("readystatechange", xhr.status, e);
-          });
-
-
+          xhr.open('GET', url, true);
           xhr.send();
         });
       }
 
-      var p = xhrRequest("http://kristijanburnik.github.io/");
+      function runTest(url, expectation, description) {
+        var xhr_test = async_test(description, {timeout: 100});
+
+        var expectedEventTriggered = false;
+
+        function triggerEvent(event_type) {
+          expectedEventTriggered = true;
+          xhr_test.step(function() {
+            assert_equals(event_type, expectation,
+                          "Promise should be rejected.");
+          });
+          xhr_test.done();
+        }
+
+        // Trigger proper event.
+        var p = xhrRequest(url).then(function() {
+          triggerEvent("success");
+        }, function(err) {
+          triggerEvent("error");
+        });
+
+        // Force the timeout since testharness seems broken in this regard.
+        setTimeout(function() {
+          if (expectedEventTriggered)
+            return;
+
+          xhr_test.step(function() {
+            assert_true(false, "Forced timeout: Expected " + expectation +
+                        " event was not triggered.");
+          });
+          xhr_test.done();
+        }, 300);
+      }
+
+      // Sanity check if test is run over HTTPS.
+      test(function() {
+        assert_equals(location.protocol, "https:",
+                      "The test should be run over HTTPS.");
+      }, "Check if running HTTPS", {timeout: 100});
+
+      runTest(location.origin, "success",
+              "Non mixed-content request");
+
+      runTest("http://" + location.host, "error",
+              "Mixed-content request");
 
     </script>
   </body>
