@@ -36,7 +36,7 @@
       }
 
       function runTest(url, expectation, description) {
-        var xhr_test = async_test(description, {timeout: 100});
+        var xhr_test = async_test(description);
 
         var expectedEventTriggered = false;
 
@@ -56,20 +56,25 @@
           triggerEvent("success");
         }, function(err) {
           triggerEvent("error");
-          console.log(err);
         });
 
-        // Force the timeout since testharness seems broken in this regard.
-        setTimeout(function() {
-          if (expectedEventTriggered)
-            return;
 
-          xhr_test.step(function() {
-            assert_true(false, "Forced timeout: Expected " + expectation +
-                        " event was not triggered.");
-          });
+        // TODO(kristijanburnik): Once merged in this PR:
+        //   https://github.com/w3c/testharness.js/pull/127
+        // Pull in the new testharness code.
+        // Refactor to make use of step_timeout.
+        setTimeout(function(){
+          xhr_test.step(function(){
+            assert_true(expectedEventTriggered, "XHR event was fired.");
+          })
           xhr_test.done();
         }, 300);
+        /*
+        xhr_test.step_timeout(function() {
+          assert_true(expectedEventTriggered, "XHR event was fired.");
+          xhr_test.done()
+        }, 300);
+        */
       }
 
       // Sanity check if test is run over HTTPS.
