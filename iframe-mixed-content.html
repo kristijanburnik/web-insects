@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Mixed-Content: Iframe event test</title>
+    <meta charset='utf-8'>
+    <meta name="description" content="Web-Insects">
+    <link rel="author" title="Kristijan Burnik" href="burnik@chromium.org">
+    <link rel="help" href="http://www.w3.org/TR/mixed-content/">
+    <meta name="assert" content="Check if IFRAME is responding to mixed-content">
+    <script src="testharness/testharness.js"></script>
+    <script src="testharness/testharnessreport.js"></script>
+  </head>
+  <body>
+    <h1>Mixed-Content: Iframe event test</h1>
+    <script>
+
+      function setAttributes(el, attrs) {
+        attrs = attrs || {}
+        for (var attr in attrs)
+          el.setAttribute(attr, attrs[attr]);
+      }
+
+      function createElement(tagName, attrs, parent, bindEvents) {
+        var element = document.createElement(tagName);
+
+        if (bindEvents) {
+          element.__promise__ = new Promise(function(resolve, reject) {
+            element.addEventListener("load", function() { resolve(); console.log("success"); });
+            element.addEventListener("error", function(event) { reject(event); console.log("error"); });
+            setAttributes(element, attrs);
+          });
+        } else {
+          setAttributes(element, attrs);
+        }
+
+        if (parent)
+          parent.appendChild(element);
+
+        return element;
+      }
+
+      function queryIframe(url) {
+        return createElement("iframe", {"src": url}, document.body, true);
+      }
+
+      function runTest(url, expectation, description) {
+        var iframe_test = async_test(description);
+
+        var expectedEventTriggered = false;
+
+
+        function triggerEvent(event_type) {
+           console.log("Triggered event", event_type);
+
+          expectedEventTriggered = true;
+          iframe_test.step(function() {
+            assert_equals(event_type, expectation,
+                          "Promise should be rejected.");
+          });
+          iframe_test.done();
+        }
+
+        var el = queryIframe(url);
+
+        el.__promise__.then(function() {
+          triggerEvent("success");
+        }, function(err) {
+          triggerEvent("error");
+        });
+
+        // TODO(kristijanburnik): Once merged in this PR:
+        //   https://github.com/w3c/testharness.js/pull/127
+        // Pull in the new testharness code.
+        // Refactor to make use of step_timeout.
+        setTimeout(function(){
+          iframe_test.step(function(){
+            assert_true(expectedEventTriggered, "IFRAME event was fired.");
+            iframe_test.done();
+          })
+        }, 300);
+        /*
+        iframe_test.step_timeout(function() {
+          assert_true(expectedEventTriggered, "XHR event was fired.");
+          iframe_test.done()
+        }, 300);
+        */
+      }
+
+      // Sanity check if test is run over HTTPS.
+      test(function() {
+        assert_equals(location.protocol, "https:",
+                      "The test should be run over HTTPS.");
+      }, "Check if running HTTPS", {timeout: 100});
+
+      runTest(location.origin, "success",
+              "Non mixed-content request");
+
+      runTest("http://" + location.host, "error",
+              "Mixed-content request");
+
+    </script>
+    <div id="log"></div>
+  </body>
+</html>
