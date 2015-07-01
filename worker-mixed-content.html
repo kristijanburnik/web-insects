@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Mixed-Content: Worker messaging test</title>
+    <meta charset='utf-8'>
+    <meta name="description" content="Web-Insects">
+    <link rel="author" title="Kristijan Burnik" href="burnik@chromium.org">
+    <link rel="help" href="http://www.w3.org/TR/mixed-content/">
+    <meta name="assert" content="Check if Worker is responding properly to mixed-content">
+    <script src="testharness/testharness.js"></script>
+    <script src="testharness/testharnessreport.js"></script>
+  </head>
+  <body>
+    <h1>Mixed-Content: Worker test</h1>
+    <script>
+    function requestViaWorker(url) {
+      var eventPromise = new Promise(function(resolve, reject) {
+        var worker = new Worker(url);
+        worker.addEventListener('message', resolve);
+        worker.addEventListener('error', reject);
+        worker.postMessage('');
+      });
+
+      return eventPromise
+    }
+
+    function runTest(url, description) {
+      console.log(url);
+      var t = async_test(description);
+      requestViaWorker(url).then(function(e) {
+        t.step(function() {
+          assert_equals(e.data, 'done', "Got the message.");
+          t.done();
+        }, "Same origin works fine.");
+      }, function(e) {
+          t.step(function() {
+            console.log(e);
+            assert_unreached("The error event should not be triggered.");
+            t.done();
+          }, "Same origin works fine.");
+      });
+    }
+
+    var path = location.pathname.split('/');
+    path.pop();
+    path = path.join('/')
+
+    runTest("./worker.plain.js", "Same origin worker works with a relative URL.");
+    runTest("https://" + location.host + path + "/worker.plain.js", "Same origin worker works with a full URL.");
+    runTest("https://" + location.host + path + "/worker.cross.js", "Same origin worker works with a full URL when posting message to *.");
+    runTest("http://" + location.host + path + "/worker.plain.js", "Cross origin worker works with a full URL.");
+
+    </script>
+    <div id="log"></div>
+  </body>
+</html>
